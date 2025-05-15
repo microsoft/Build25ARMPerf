@@ -7,21 +7,14 @@ This repository contains tools and documentation for analyzing, profiling, and o
 ### [ARMNativeAppScan](./ARMNativeAppScan)
 A PowerShell-based tool for analyzing Windows executables and their dependencies to determine the percentage of native ARM64 code versus emulated code. This static analysis tool helps developers understand how "native" their application truly is.
 
-Key features:
-- Analyzes main executable and all dependencies
-- Provides detailed breakdown of native vs non-native code
-- Supports recursive dependency scanning
-- Includes digital signature verification
-- Generates comprehensive reports
-
 ### [ARMNativeProfiling](./ARMNativeProfiling)
 Documentation and guidance on how to profile ARM applications to identify performance-critical code paths and determine their native code composition. This helps developers focus optimization efforts on the most impactful areas of their application.
 
 ### [ARMClientAppCompilation](./ARMClientAppCompilation)
-Documentation on compiling and optimizing client applications for ARM architectures. *(Content to be added)*
+Documentation on compiling and optimizing client applications for ARM architectures. 
 
 ### [MacCrossPlatformAppAnalysis](./MacCrossPlatformAppAnalysis)
-Resources for analyzing cross-platform applications on macOS. *(Content to be added)*
+Resources for analyzing cross-platform applications on macOS. 
 
 ## Getting Started
 
@@ -35,7 +28,7 @@ Each directory contains its own README with detailed information about the tools
 
 ## Contributing
 
-This is an active project and contributions are welcome. Please read the documentation in each section before contributing.
+Contributions are welcome.
 
 ## License
 
