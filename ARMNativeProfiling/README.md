@@ -57,35 +57,12 @@ Windows Performance Recorder (WPR) and Windows Performance Analyzer (WPA) are po
 
 4. **Key Analysis Steps for hot Functions **
 
-Symbols are required to be loaded for your app for function level analysis
+   Symbols are required to be loaded for your app for function level analysis
 
    1. Already sorted by "Weight" to find the hottest functions
    2. Examine the call stacks of high-weight items
    3. Look for patterns of emulated code in performance-critical paths
    4. Note which DLLs contribute most to emulated execution
-
-### Example Analysis Workflow
-
-1. **Initial Assessment**
-   ```
-   CPU Usage (Sampled) > By Module
-   ```
-   - Identifies which modules consume the most CPU time
-   - Shows the distribution of native vs emulated code
-
-2. **Detailed Function Analysis**
-   ```
-   CPU Usage (Sampled) > By Function
-   ```
-   - Lists specific functions consuming CPU time
-   - Reveals whether hot functions are native or emulated
-
-3. **Call Stack Investigation**
-   ```
-   CPU Usage (Sampled) > Call Stacks
-   ```
-   - Shows complete call paths
-   - Helps identify where emulation enters the call chain
 
 ### Optimization Priorities
 
