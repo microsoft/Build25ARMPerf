@@ -86,7 +86,18 @@ function Get-BinaryType {
     
     try {
         $output = & dumpbin.exe /headers $FilePath 2>&1
-        
+
+        # Check if dumpbin.exe failed
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "dumpbin.exe failed with exit code $LASTEXITCODE for file: $FilePath"
+            Write-Host "Tool output:" -ForegroundColor Yellow
+            foreach ($line in $output) {
+                Write-Host "  $line" -ForegroundColor Yellow
+            }
+            Write-Warning "This may indicate a corrupted or incomplete binary file."
+            return "Error"
+        }
+
         Write-Debug "Analyzing binary type for: $FilePath"
         
         # Debug: Output the full dumpbin.exe output with line numbers for debugging
@@ -198,8 +209,23 @@ function Get-CodeRanges {
     
     try {
         Write-Debug "Analyzing code ranges for: $FilePath"
-        
+
         $output = & link.exe /dump /loadconfig $FilePath 2>&1
+
+        # Check if link.exe failed
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "link.exe failed with exit code $LASTEXITCODE for file: $FilePath"
+            Write-Host "Tool output:" -ForegroundColor Yellow
+            foreach ($line in $output) {
+                Write-Host "  $line" -ForegroundColor Yellow
+            }
+            Write-Warning "This may indicate a corrupted or incomplete binary file."
+            return @{
+                NativePercentage = 0
+                NativeCodeSize = 0
+                NonNativeCodeSize = 0
+            }
+        }
 
         # Debug: Output the full link.exe output with line numbers for debugging
         if ($PSCmdlet.MyInvocation.BoundParameters.ContainsKey('Debug')) {
@@ -307,11 +333,23 @@ function Get-Dependencies {
     
     try {
         Write-Host "Getting dependencies for: $FilePath    Depth:$CurrentDepth" -ForegroundColor Cyan
-        
+
         $output = & dumpbin.exe /dependents $FilePath 2>&1
+
+        # Check if dumpbin.exe failed
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "dumpbin.exe failed with exit code $LASTEXITCODE for file: $FilePath"
+            Write-Host "Tool output:" -ForegroundColor Yellow
+            foreach ($line in $output) {
+                Write-Host "  $line" -ForegroundColor Yellow
+            }
+            Write-Warning "This may indicate a corrupted or incomplete binary file."
+            return @()
+        }
+
         $dependencies = @()
         $foundDependencies = $false
-        
+
         # Debug: Output the full dumpbin.exe output with line numbers for debugging
         if ($PSCmdlet.MyInvocation.BoundParameters.ContainsKey('Debug')) {
             Write-Host "===== DUMPBIN DEPENDENCIES OUTPUT START =====" -ForegroundColor Magenta
@@ -591,9 +629,9 @@ function Get-SearchPaths {
     # Scan all subfolders of the executable's directory
     Write-Host "Scanning subfolders of $exeDir for potential DLL locations..." -ForegroundColor Cyan
     $subfolders = Get-ChildItem -Path $exeDir -Directory -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
-    foreach ($subfolder in $subfolders) {
-        [void]$searchPaths.Add($subfolder)
-    }
+        foreach ($subfolder in $subfolders) {
+            [void]$searchPaths.Add($subfolder)
+        }
     
     # Check if exe is in Program Files and look for matching ProgramData folder
     if ($exeDir -match "\\Program Files(?:\s\(x86\))?\\([^\\]+)\\([^\\]+)") {
@@ -607,10 +645,10 @@ function Get-SearchPaths {
             
             # Add subfolders from ProgramData as well
             $programDataSubfolders = Get-ChildItem -Path $programDataPath -Directory -Recurse -ErrorAction SilentlyContinue | 
-                                      Select-Object -ExpandProperty FullName
-            foreach ($subfolder in $programDataSubfolders) {
-                [void]$searchPaths.Add($subfolder)
-            }
+                                          Select-Object -ExpandProperty FullName
+                foreach ($subfolder in $programDataSubfolders) {
+                    [void]$searchPaths.Add($subfolder)
+                }
         }
     }
     
@@ -720,6 +758,15 @@ if ($Full) {
 
 # Get binary info for the main executable
 $mainBinaryInfo = Get-BinaryInfo -FilePath $fullPath
+
+# Check if the main binary analysis failed - this is fatal
+if ($mainBinaryInfo.BinaryType -eq "Error") {
+    Write-Host "Error: Failed to analyze the main binary: $fullPath" -ForegroundColor Red
+    Write-Host "The binary may be corrupted, incomplete, or inaccessible." -ForegroundColor Red
+    Write-Host "Cannot continue analysis." -ForegroundColor Red
+    exit 1
+}
+
 # Add depth information to the main executable
 $mainBinaryInfo | Add-Member -NotePropertyName "Depth" -NotePropertyValue 0 -Force
 $results += $mainBinaryInfo
@@ -749,7 +796,7 @@ if ($Full -and $Depth -gt 0) {
     
     # Set up first level of dependencies to process
     foreach ($dependency in $initialDependencies) {
-        $dependencyPath = Resolve-DependencyPath -DependencyName $dependency -SourceFilePath $fullPath
+        $dependencyPath = Resolve-DependencyPath -DependencyName $dependency -SourceFilePath $fullPath -AdditionalSearchPaths $discoveredSearchPaths
         if ($dependencyPath -and -not $processedFiles.ContainsKey($dependencyPath.ToLower())) {
             $depthInfo[1].FilesToProcess += $dependencyPath
             $depthInfo[1].Total++
@@ -808,7 +855,7 @@ if ($Full -and $Depth -gt 0) {
                     
                     # Add dependencies to next level
                     foreach ($dependency in $dependencies) {
-                        $dependencyPath = Resolve-DependencyPath -DependencyName $dependency -SourceFilePath $file
+                        $dependencyPath = Resolve-DependencyPath -DependencyName $dependency -SourceFilePath $file -AdditionalSearchPaths $discoveredSearchPaths
                         if ($dependencyPath -and -not $processedFiles.ContainsKey($dependencyPath.ToLower()) -and 
                             -not $depthInfo[$nextDepth].FilesToProcess.Contains($dependencyPath)) {
                             $depthInfo[$nextDepth].FilesToProcess += $dependencyPath
